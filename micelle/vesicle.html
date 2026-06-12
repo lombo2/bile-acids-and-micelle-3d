@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mixed micelle3D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "../vendor/three.module.js"
+    }
+  }
+  </script>
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #ffffff; font-family: Arial, sans-serif; overflow: hidden; }
+
+    #topbar {
+      position: fixed; left: 0; right: 0; top: 0; height: 50px;
+      display: flex; align-items: center; gap: 14px;
+      padding: 0 14px; border-bottom: 1px solid #e5e5e5;
+      background: rgba(255,255,255,0.96); z-index: 20;
+    }
+    #topbar .title { font-weight: 700; font-size: 15px; }
+    #topbar .subtitle { font-size: 12px; color: #444; }
+
+    #canvasWrap { position: fixed; left: 0; right: 0; top: 50px; bottom: 0; }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    #loading {
+      position: fixed; left: 16px; bottom: 16px;
+      padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
+      background: rgba(255,255,255,0.96); font-size: 12px; color: #222; z-index: 30;
+    }
+
+    #legend {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      width: 320px;
+      padding: 0;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.96);
+      font-size: 12px;
+      line-height: 1.35;
+      color: #222;
+      z-index: 15;
+      overflow: hidden;
+    }
+#legend .swatch { display: inline-block; width: 12px; height: 12px; border: 1px solid #aaa; margin-right: 6px; vertical-align: middle; }
+.smallbtn {
+      padding: 6px 10px; border: 1px solid #ccc; border-radius: 8px;
+      background: #f8f8f8; cursor: pointer; font-size: 12px;
+    }
+    .smallbtn:hover { background: #efefef; }
+
+    .viewerSwitchLink {
+      margin-left: auto;
+      padding: 6px 10px;
+      border: 1px solid #bfc5ca;
+      border-radius: 8px;
+      background: #f8f8f8;
+      color: #222;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .viewerSwitchLink:hover {
+      background: #eceff1;
+    }
+  
+    #legend summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 12px 14px;
+      font-weight: 700;
+      font-size: 13px;
+      user-select: none;
+      border-bottom: 1px solid transparent;
+    }
+
+    #legend summary::-webkit-details-marker {
+      display: none;
+    }
+
+    #legend summary::before {
+      content: "▸";
+      display: inline-block;
+      margin-right: 8px;
+      transition: transform 0.15s ease;
+    }
+
+    #legend[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    #legend[open] summary {
+      border-bottom: 1px solid #eee;
+    }
+
+    #legend .legendBody {
+      padding: 10px 14px 12px 14px;
+    }
+
+
+  
+    /* VESICLE_GUI_POSITION_OVERRIDE_START */
+    .lil-gui.root {
+      top: 0.5cm !important;
+    }
+    /* VESICLE_GUI_POSITION_OVERRIDE_END */
+</style>
+</head>
+<body>
+  <div id="topbar">
+    <div class="title">Mixed micelle3D</div>
+    <div class="subtitle">PC atom colors · Cholesterol spacefill (yellow) · Bile salts C grey (sticks) · inner membrane translucent</div>
+    <button class="smallbtn" id="btnResetTop">Reset camera</button>
+    <button class="smallbtn" id="btnClosedTop">Closed</button>
+    <button class="smallbtn" id="btnCut1Top">Cutaway 1</button>
+    <button class="smallbtn" id="btnCut2Top">Cutaway 2</button>
+    <button class="smallbtn" id="btnSnapTop">Snapshot PNG</button>
+    <a class="viewerSwitchLink" href="../index.html">
+      Open Bile acids 3D
+    </a>
+  </div>
+
+  <div id="canvasWrap"></div>
+  <div id="loading">Loading…</div>
+
+  <details id="legend" open>
+    <summary>Legend</summary>
+
+    <div class="legendBody">
+
+      <div style="font-weight:700; margin-bottom:6px;">
+        Atom colors
+      </div>
+
+      <div style="display:grid;
+                  grid-template-columns:18px 1fr;
+                  column-gap:8px;
+                  row-gap:5px;
+                  align-items:center;">
+
+        <span style="width:12px;height:12px;border-radius:50%;
+                     display:inline-block;background:#ffffff;
+                     border:1px solid #888;"></span>
+        <span>H - white</span>
+
+        <span style="width:12px;height:12px;border-radius:50%;
+                     display:inline-block;background:#909090;
+                     border:1px solid #666;"></span>
+        <span>C - gray</span>
+
+        <span style="width:12px;height:12px;border-radius:50%;
+                     display:inline-block;background:#ff0d0d;
+                     border:1px solid #a00;"></span>
+        <span>O - red</span>
+
+        <span style="width:12px;height:12px;border-radius:50%;
+                     display:inline-block;background:#3050f8;
+                     border:1px solid #1730a0;"></span>
+        <span>N - blue</span>
+
+        <span style="width:12px;height:12px;border-radius:50%;
+                     display:inline-block;background:#ff8000;
+                     border:1px solid #a65300;"></span>
+        <span>P - orange</span>
+
+        <span style="width:12px;height:12px;border-radius:50%;
+                     display:inline-block;background:#ffff30;
+                     border:1px solid #999900;"></span>
+        <span>S - yellow</span>
+
+      </div>
+
+      <div style="height:1px;background:#dddddd;margin:10px 0;"></div>
+
+      <div style="font-weight:700; margin-bottom:6px;">
+        Molecular representation
+      </div>
+
+      <div style="line-height:1.55;">
+        <div>Phosphatidylcholine - ball-and-stick</div>
+        <div>Cholesterol - yellow space-filling</div>
+        <div>Bile salts - ball-and-stick</div>
+      </div>
+
+      <div style="height:1px;background:#dddddd;margin:10px 0;"></div>
+
+      <div style="font-weight:700; margin-bottom:6px;">
+        Micelle composition
+      </div>
+
+      <div style="display:grid;
+                  grid-template-columns:1fr auto;
+                  column-gap:14px;
+                  row-gap:4px;">
+
+        <span>Phosphatidylcholine</span>
+        <span>70%</span>
+
+        <span>Cholesterol</span>
+        <span>20%</span>
+
+        <span>Taurocholate</span>
+        <span>5%</span>
+
+        <span>Glycocholate</span>
+        <span>5%</span>
+
+      </div>
+
+    </div>
+  </details>
+  <div id="legendCounts" style="display:none;"></div>
+
+  <script type="module">
+    import * as THREE from "../vendor/three.module.js";
+    import { OrbitControls } from "../vendor/OrbitControls.js";
+    import GUI from "../vendor/lil-gui.esm.js";
+
+    const PATH_INSTANCES = "./vesicle_instances.json";
+    const PATH_TEMPLATES = "../template_json/";
+
+    const TEMPLATE_FILES = {
+      "Cholesterol": "Cholesterol.json",
+      "DOPC": "DOPC.json",
+      "POPC": "POPC.json",
+      "Taurocholate_anion": "Taurocholate_anion.json",
+      "Glycocholate_anion": "Glycocholate_anion.json"
+    };
+
+    const STYLE = {
+      "DOPC":               { component: "PC",          mode: "ballstick", showHydrogens: true,  showBonds: true,  bondRadius: 0.09 },
+      "POPC":               { component: "PC",          mode: "ballstick", showHydrogens: true,  showBonds: true,  bondRadius: 0.09 },
+      "Cholesterol":        { component: "Cholesterol", mode: "spacefill", showHydrogens: true,  showBonds: false, bondRadius: 0.00 },
+      "Taurocholate_anion": { component: "Bile salts",  mode: "ballstick", showHydrogens: true,  showBonds: true,  bondRadius: 0.13 },
+      "Glycocholate_anion": { component: "Bile salts",  mode: "ballstick", showHydrogens: true,  showBonds: true,  bondRadius: 0.13 }
+    };
+
+    const RAD_BALL = { "H":0.55,"C":0.90,"N":0.95,"O":0.90,"P":1.15,"S":1.15,"DEFAULT":0.85 };
+    const CHOL_SPACEFILL_SCALE = 1.65;
+    const INNER_OPACITY = 0.55;
+
+    const COL_STD = { "H":0xffffff,"C":0x000000,"N":0x0000ff,"O":0xff0000,"S":0xffd000,"P":0x8000ff,"DEFAULT":0x777777 };
+    const COL_BILES = { ...COL_STD, "C":0x666666 };
+    const CHOL_YELLOW = 0xd8b11e;
+
+    const R_OUTER_APPROX = 50.0;
+    const R_INNER_APPROX = 44.0;
+    const MID_RADIUS = (R_OUTER_APPROX + R_INNER_APPROX) / 2.0;
+
+    let clipOffset = 60.0;
+    const planeNormal = new THREE.Vector3(1, 1, 0).normalize();
+
+    const loading = document.getElementById("loading");
+    const wrap = document.getElementById("canvasWrap");
+    const legendCounts = document.getElementById("legendCounts");
+const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+      preserveDrawingBuffer: false,
+      powerPreference: "high-performance"
+    });
+    renderer.setClearColor(0xffffff, 1.0);
+    renderer.localClippingEnabled = true;
+    wrap.appendChild(renderer.domElement);
+
+    console.info(
+      "Interactive micelle optimization active:",
+      "static instancing, shared clipping plane, preserved molecular quality"
+    );
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 3000);
+    const CAMERA_HOME = new THREE.Vector3(130, 105, 130);
+    camera.position.copy(CAMERA_HOME);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 0, 0);
+    controls.zoomSpeed = 0.002;         controls.minDistance = 35;
+    controls.maxDistance = 1200;
+// your preferred zoom sensitivity
+    controls.rotateSpeed = 0.75;
+    controls.panSpeed = 0.65;
+    controls.enablePan = true;
+    controls.enableRotate = true;
+    controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+
+    
+    // --- FIXED-STEP WHEEL ZOOM (independent of trackpad delta magnitude) ---
+    // Prevent "one scroll = teleport" by ignoring delta magnitude and using a constant step.
+    controls.enableZoom = false; // disable OrbitControls' native wheel handling
+
+    const __wheelStep = 1.03; // >1 = small step; increase to 1.10 if you want faster zoom
+    const __wheelVector = new THREE.Vector3();
+
+    renderer.domElement.addEventListener("wheel", (ev) => {
+      ev.preventDefault();
+      const dir = Math.sign(ev.deltaY || 0);
+      if (dir > 0) {
+        // wheel down: zoom out (dolly out)
+        camera.position.sub(controls.target).multiplyScalar(__wheelStep).add(controls.target);
+      } else if (dir < 0) {
+        // wheel up: zoom in (dolly in)
+        camera.position.sub(controls.target).multiplyScalar(1.0 / __wheelStep).add(controls.target);
+      }
+
+      // Clamp distance
+      const d = camera.position.distanceTo(controls.target);
+      if (d < controls.minDistance) {
+        __wheelVector
+          .copy(camera.position)
+          .sub(controls.target)
+          .normalize()
+          .multiplyScalar(controls.minDistance);
+
+        camera.position
+          .copy(controls.target)
+          .add(__wheelVector);
+      } else if (d > controls.maxDistance) {
+        __wheelVector
+          .copy(camera.position)
+          .sub(controls.target)
+          .normalize()
+          .multiplyScalar(controls.maxDistance);
+
+        camera.position
+          .copy(controls.target)
+          .add(__wheelVector);
+      }
+
+      controls.update();
+    }, { passive: false });
+    // --- END FIXED-STEP WHEEL ZOOM ---
+scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+    const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(130, 160, 100); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(-120, 60, -70); scene.add(fill);
+
+    function resize() {
+      const w = wrap.clientWidth, h = wrap.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    async function loadJSON(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`Failed to load ${url} (${r.status})`);
+      return await r.json();
+    }
+
+    function transformPoint(local, R, pos) {
+      const x = local[0], y = local[1], z = local[2];
+      return [
+        R[0][0]*x + R[0][1]*y + R[0][2]*z + pos[0],
+        R[1][0]*x + R[1][1]*y + R[1][2]*z + pos[1],
+        R[2][0]*x + R[2][1]*y + R[2][2]*z + pos[2]
+      ];
+    }
+
+    function getLeaflet(pos) {
+      const r = Math.sqrt(pos[0]*pos[0] + pos[1]*pos[1] + pos[2]*pos[2]);
+      return (r >= MID_RADIUS) ? "outer" : "inner";
+    }
+
+    function atomIncluded(tpl, el) {
+      if (!STYLE[tpl].showHydrogens && el === "H") return false;
+      return true;
+    }
+
+    function bondIncluded(tpl, e0, e1) {
+      if (!STYLE[tpl].showBonds) return false;
+      if (!STYLE[tpl].showHydrogens && (e0 === "H" || e1 === "H")) return false;
+      return true;
+    }
+
+    function atomColor(tpl, el) {
+      if (tpl === "Cholesterol") return (el === "H") ? COL_STD.H : CHOL_YELLOW;
+      if (STYLE[tpl].component === "Bile salts") return (COL_BILES[el] ?? COL_BILES.DEFAULT);
+      return (COL_STD[el] ?? COL_STD.DEFAULT);
+    }
+
+    function leafletOpacity(tpl, leaflet) {
+      const comp = STYLE[tpl].component;
+      if ((comp === "PC" || comp === "Bile salts") && leaflet === "inner") return INNER_OPACITY;
+      return 1.0;
+    }
+
+    const sphereGeoms = new Map();
+    const bondGeoms = new Map();
+    const atomInstancers = new Map();
+    const bondInstancers = new Map();
+
+    function sphereKey(tpl, el, r) { return `r=${r.toFixed(4)}`; }
+    function atomKey(tpl, leaflet, el) { return `${tpl}|${leaflet}|${el}`; }
+    function bondKey(tpl, leaflet) { return `${tpl}|${leaflet}`; }
+
+    function atomRadius(tpl, el) {
+      let r = (RAD_BALL[el] ?? RAD_BALL.DEFAULT);
+      if (STYLE[tpl].mode === "spacefill" && tpl === "Cholesterol") r *= CHOL_SPACEFILL_SCALE;
+      return r;
+    }
+
+    function makeSphereGeometry(r) { return new THREE.SphereGeometry(r, 14, 12); }
+    function makeBondGeometry(r) { return new THREE.CylinderGeometry(r, r, 1.0, 10, 1, true); }
+
+    function makeAtomMaterial(tpl, leaflet, el) {
+      const op = leafletOpacity(tpl, leaflet);
+      return new THREE.MeshStandardMaterial({
+        color: atomColor(tpl, el),
+        roughness: 0.55,
+        metalness: 0.0,
+        transparent: (op < 0.999),
+        opacity: op,
+        clippingPlanes: [],
+        clipIntersection: false
+      });
+    }
+
+    function makeBondMaterial(tpl, leaflet) {
+      const comp = STYLE[tpl].component;
+      let color = 0x8a8a8a;
+      if (comp === "Bile salts") color = 0x6d6d6d;
+      if (comp === "PC") color = 0x9a9a9a;
+      const op = leafletOpacity(tpl, leaflet);
+      return new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.78,
+        metalness: 0.0,
+        transparent: (op < 0.999),
+        opacity: op,
+        clippingPlanes: [],
+        clipIntersection: false
+      });
+    }
+
+    function ensureAtomInstancer(tpl, leaflet, el, count) {
+      const k = atomKey(tpl, leaflet, el);
+      if (atomInstancers.has(k)) return atomInstancers.get(k);
+
+      const r = atomRadius(tpl, el);
+      const gk = sphereKey(tpl, el, r);
+      if (!sphereGeoms.has(gk)) sphereGeoms.set(gk, makeSphereGeometry(r));
+
+      const geom = sphereGeoms.get(gk);
+      const mat = makeAtomMaterial(tpl, leaflet, el);
+
+      const mesh = new THREE.InstancedMesh(geom, mat, count);
+      mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+      mesh.frustumCulled = false;
+      mesh.userData = { tpl, leaflet, kind:"atom", component: STYLE[tpl].component };
+      scene.add(mesh);
+      atomInstancers.set(k, mesh);
+      return mesh;
+    }
+
+    function ensureBondInstancer(tpl, leaflet, count) {
+      const k = bondKey(tpl, leaflet);
+      if (bondInstancers.has(k)) return bondInstancers.get(k);
+
+      const br = STYLE[tpl].bondRadius;
+      if (!bondGeoms.has(br)) bondGeoms.set(br, makeBondGeometry(br));
+      const geom = bondGeoms.get(br);
+
+      const mat = makeBondMaterial(tpl, leaflet);
+      const mesh = new THREE.InstancedMesh(geom, mat, count);
+      mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+      mesh.frustumCulled = false;
+      mesh.userData = { tpl, leaflet, kind:"bond", component: STYLE[tpl].component };
+      scene.add(mesh);
+      bondInstancers.set(k, mesh);
+      return mesh;
+    }
+
+    const sharedClipPlane = new THREE.Plane(
+      planeNormal.clone(),
+      clipOffset
+    );
+
+    let clippingActive = false;
+
+    function setMaterialClippingEnabled(enabled) {
+      if (enabled === clippingActive) return;
+
+      clippingActive = enabled;
+      const planes = enabled ? [sharedClipPlane] : [];
+
+      for (const m of atomInstancers.values()) {
+        m.material.clippingPlanes = planes;
+        m.material.needsUpdate = true;
+      }
+
+      for (const m of bondInstancers.values()) {
+        m.material.clippingPlanes = planes;
+        m.material.needsUpdate = true;
+      }
+    }
+
+    function updateClippingPlanes() {
+      sharedClipPlane.constant = clipOffset;
+
+      // Closed view does not need clipping shader work.
+      // Cutaway/manual clipping uses the same shared plane.
+      setMaterialClippingEnabled(clipOffset < 59.999);
+    }
+
+    const state = {
+      showPhosphatidylcholine: true,
+      showCholesterol: true,
+      showBileSalts: true,
+      showDOPC: true,
+      showPOPC: true,
+      showOuterLeaflet: true,
+      showInnerLeaflet: true,
+      clippingOffset: 60.0
+    };
+
+    function templateVisible(tpl) {
+      if (tpl === "DOPC" && !state.showDOPC) return false;
+      if (tpl === "POPC" && !state.showPOPC) return false;
+      const comp = STYLE[tpl].component;
+      if (comp === "PC" && !state.showPhosphatidylcholine) return false;
+      if (comp === "Cholesterol" && !state.showCholesterol) return false;
+      if (comp === "Bile salts" && !state.showBileSalts) return false;
+      return true;
+    }
+
+    function leafletVisible(tpl, leaflet) {
+      if (leaflet === "outer" && !state.showOuterLeaflet) return false;
+      if (leaflet === "inner" && !state.showInnerLeaflet) return false;
+      return true;
+    }
+
+    function updateVisibility() {
+      for (const m of atomInstancers.values()) {
+        const ud = m.userData;
+        m.visible = templateVisible(ud.tpl) && leafletVisible(ud.tpl, ud.leaflet);
+      }
+      for (const m of bondInstancers.values()) {
+        const ud = m.userData;
+        m.visible = templateVisible(ud.tpl) && leafletVisible(ud.tpl, ud.leaflet);
+      }
+}
+
+    function resetCamera() {
+      camera.position.copy(CAMERA_HOME);
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+
+    function setClosedView(ctl) { state.clippingOffset = 60.0; clipOffset = 60.0; updateClippingPlanes(); if (ctl) ctl.updateDisplay(); }
+    function setCutaway1(ctl)  { state.clippingOffset = 18.0; clipOffset = 18.0; updateClippingPlanes(); if (ctl) ctl.updateDisplay(); }
+    function setCutaway2(ctl)  { state.clippingOffset = -8.0; clipOffset = -8.0; updateClippingPlanes(); if (ctl) ctl.updateDisplay(); }
+
+    function exportPNG() {
+      controls.update();
+      renderer.render(scene, camera);
+      const dataURL = renderer.domElement.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = dataURL;
+      a.download = "vesicle_snapshot.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    const tmpMat4 = new THREE.Matrix4();
+    const tmpR = new THREE.Matrix4();
+    const tmpT = new THREE.Matrix4();
+    const tmpS = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const vA = new THREE.Vector3();
+    const vB = new THREE.Vector3();
+    const vMid = new THREE.Vector3();
+    const bondYAxis = new THREE.Vector3(0, 1, 0);
+
+    async function main() {
+      loading.textContent = "Loading templates…";
+
+      const templates = {};
+      for (const [k, f] of Object.entries(TEMPLATE_FILES)) {
+        templates[k] = await loadJSON(PATH_TEMPLATES + f);
+      }
+
+      loading.textContent = "Loading instance layout…";
+      const instData = await loadJSON(PATH_INSTANCES);
+      const instances = instData.instances || [];
+
+      const metaCounts = (instData.meta && instData.meta.counts) ? instData.meta.counts : {};
+      legendCounts.innerHTML = `
+        <div><b>Phosphatidylcholine total:</b> ${metaCounts.pc_total ?? "?"}</div>
+        <div>- DOPC: ${metaCounts.pc_DOPC ?? "?"}</div>
+        <div>- POPC: ${metaCounts.pc_POPC ?? "?"}</div>
+        <div><b>Cholesterol:</b> ${metaCounts.cholesterol ?? "?"}</div>
+        <div><b>Bile salts:</b> ${(metaCounts.bile_taurocholate ?? 0) + (metaCounts.bile_glycocholate ?? 0)}</div>
+        <div>- Taurocholate: ${metaCounts.bile_taurocholate ?? "?"}</div>
+        <div>- Glycocholate: ${metaCounts.bile_glycocholate ?? "?"}</div>
+      `;
+
+      const atomCounts = {};
+      const bondCounts = {};
+
+      for (const inst of instances) {
+        const tplName = inst.template;
+        const tpl = templates[tplName];
+        if (!tpl) continue;
+
+        const leaflet = getLeaflet(inst.pos);
+
+        atomCounts[tplName] ??= {};
+        atomCounts[tplName][leaflet] ??= {};
+
+        for (let i=0; i<tpl.elements.length; i++) {
+          const el = tpl.elements[i];
+          if (!atomIncluded(tplName, el)) continue;
+          atomCounts[tplName][leaflet][el] = (atomCounts[tplName][leaflet][el] ?? 0) + 1;
+        }
+
+        if (STYLE[tplName].showBonds) {
+          let vb = 0;
+          for (const [i0, i1, order] of tpl.bonds) {
+            const e0 = tpl.elements[i0], e1 = tpl.elements[i1];
+            if (!bondIncluded(tplName, e0, e1)) continue;
+            vb++;
+          }
+          bondCounts[tplName] ??= {};
+          bondCounts[tplName][leaflet] = (bondCounts[tplName][leaflet] ?? 0) + vb;
+        }
+      }
+
+      for (const [tplName, perLeaf] of Object.entries(atomCounts)) {
+        for (const [leaf, perEl] of Object.entries(perLeaf)) {
+          for (const [el, count] of Object.entries(perEl)) {
+            ensureAtomInstancer(tplName, leaf, el, count);
+          }
+        }
+      }
+
+      for (const [tplName, perLeaf] of Object.entries(bondCounts)) {
+        for (const [leaf, count] of Object.entries(perLeaf)) {
+          ensureBondInstancer(tplName, leaf, count);
+        }
+      }
+
+      loading.textContent = "Building geometry…";
+
+      const atomWrite = new Map();
+      const bondWrite = new Map();
+
+      for (const inst of instances) {
+        const tplName = inst.template;
+        const tpl = templates[tplName];
+        if (!tpl) continue;
+
+        const leaflet = getLeaflet(inst.pos);
+        const pos = inst.pos;
+        const R = inst.R;
+
+        for (let i=0; i<tpl.coords.length; i++) {
+          const el = tpl.elements[i];
+          if (!atomIncluded(tplName, el)) continue;
+
+          const k = atomKey(tplName, leaflet, el);
+          const mesh = atomInstancers.get(k);
+          const w = atomWrite.get(k) ?? 0;
+
+          const p = transformPoint(tpl.coords[i], R, pos);
+          tmpT.makeTranslation(p[0], p[1], p[2]);
+          tmpMat4.copy(tmpT);
+          mesh.setMatrixAt(w, tmpMat4);
+          atomWrite.set(k, w + 1);
+        }
+
+        if (STYLE[tplName].showBonds) {
+          const bk = bondKey(tplName, leaflet);
+          const bondMesh = bondInstancers.get(bk);
+          let bw = bondWrite.get(bk) ?? 0;
+
+          for (const [i0, i1, order] of tpl.bonds) {
+            const e0 = tpl.elements[i0], e1 = tpl.elements[i1];
+            if (!bondIncluded(tplName, e0, e1)) continue;
+
+            const p0 = transformPoint(tpl.coords[i0], R, pos);
+            const p1 = transformPoint(tpl.coords[i1], R, pos);
+
+            vA.set(p0[0], p0[1], p0[2]);
+            vB.set(p1[0], p1[1], p1[2]);
+
+            const dir = vB.clone().sub(vA);
+            const len = dir.length();
+            if (len < 1e-6) continue;
+            dir.normalize();
+
+            vMid.copy(vA).add(vB).multiplyScalar(0.5);
+
+            q.setFromUnitVectors(bondYAxis, dir);
+            tmpR.makeRotationFromQuaternion(q);
+            tmpS.makeScale(1, len, 1);
+            tmpT.makeTranslation(vMid.x, vMid.y, vMid.z);
+
+            tmpMat4.copy(tmpT).multiply(tmpR).multiply(tmpS);
+            bondMesh.setMatrixAt(bw, tmpMat4);
+            bw++;
+          }
+          bondWrite.set(bk, bw);
+        }
+      }
+
+      for (const mesh of atomInstancers.values()) mesh.instanceMatrix.needsUpdate = true;
+      for (const mesh of bondInstancers.values()) mesh.instanceMatrix.needsUpdate = true;
+
+      updateClippingPlanes();
+      updateVisibility();
+      controls.update();
+
+      const gui = new GUI({ width: 350 });
+
+      const fVis = gui.addFolder("Visibility");
+      fVis.add(state, "showPhosphatidylcholine").name("Show phosphatidylcholine").onChange(updateVisibility);
+      fVis.add(state, "showCholesterol").name("Show cholesterol").onChange(updateVisibility);
+      fVis.add(state, "showBileSalts").name("Show bile salts").onChange(updateVisibility);
+      fVis.add(state, "showDOPC").name("Show DOPC").onChange(updateVisibility);
+      fVis.add(state, "showPOPC").name("Show POPC").onChange(updateVisibility);
+      fVis.add(state, "showOuterLeaflet").name("Show outer membrane").onChange(updateVisibility);
+      fVis.add(state, "showInnerLeaflet").name("Show inner membrane").onChange(updateVisibility);
+fVis.open();
+
+      const fCut = gui.addFolder("Cutaway");
+      const clipCtl = fCut.add(state, "clippingOffset", -60, 80, 0.1).name("Clipping offset");
+      clipCtl.onChange(v => { clipOffset = v; updateClippingPlanes(); });
+      fCut.add({ Closed: () => setClosedView(clipCtl) }, "Closed");
+      fCut.add({ "Cutaway 1": () => setCutaway1(clipCtl) }, "Cutaway 1");
+      fCut.add({ "Cutaway 2": () => setCutaway2(clipCtl) }, "Cutaway 2");
+      fCut.open();
+
+      const fTools = gui.addFolder("Tools");
+      fTools.add({ "Reset camera": resetCamera }, "Reset camera");
+      fTools.add({ "Snapshot PNG": exportPNG }, "Snapshot PNG");
+      fTools.open();
+
+      document.getElementById("btnResetTop").addEventListener("click", resetCamera);
+      document.getElementById("btnClosedTop").addEventListener("click", () => setClosedView(clipCtl));
+      document.getElementById("btnCut1Top").addEventListener("click", () => setCutaway1(clipCtl));
+      document.getElementById("btnCut2Top").addEventListener("click", () => setCutaway2(clipCtl));
+      document.getElementById("btnSnapTop").addEventListener("click", exportPNG);
+
+      loading.textContent = "Ready.";
+      setTimeout(() => { loading.style.display = "none"; }, 1200);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    main().catch(err => {
+      console.error(err);
+      loading.textContent = "ERROR: " + err.message;
+    });
+
+    animate();
+  </script>
+</body>
+</html>
